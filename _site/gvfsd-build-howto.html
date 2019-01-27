@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link rel="stylesheet" href="/assets/css/style.css?v=" media="screen" type="text/css">
+    <link rel="stylesheet" href="/assets/css/print.css" media="print" type="text/css">
+
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+<!-- Begin Jekyll SEO tag v2.5.0 -->
+<title>Architect theme | Architect is a theme for GitHub Pages.</title>
+<meta name="generator" content="Jekyll v3.8.5" />
+<meta property="og:title" content="Architect theme" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Architect is a theme for GitHub Pages." />
+<meta property="og:description" content="Architect is a theme for GitHub Pages." />
+<link rel="canonical" href="http://localhost:4000/gvfsd-build-howto.html" />
+<meta property="og:url" content="http://localhost:4000/gvfsd-build-howto.html" />
+<meta property="og:site_name" content="Architect theme" />
+<script type="application/ld+json">
+{"@type":"WebPage","url":"http://localhost:4000/gvfsd-build-howto.html","headline":"Architect theme","description":"Architect is a theme for GitHub Pages.","@context":"http://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+
+  </head>
+
+  <body>
+    <header>
+      <div class="inner">
+        <a href="http://localhost:4000/">
+          <h1>Architect theme</h1>
+        </a>
+        <h2>Architect is a theme for GitHub Pages.</h2>
+        
+        
+      </div>
+    </header>
+
+    <div id="content-wrapper">
+      <div class="inner clearfix">
+        <section id="main-content">
+          <h2 id="how-to-build-gvfsd-from-source">How to build gvfsd from source</h2>
+<p>Building gvfsd is a pain in the dairyaire. When building, a problem ensues from glib headers supported by apt not being up to the version required by gvfsd. Because of this, building may require a temp VM to be built. We begin by making a VMware Workstation ubuntu 18 VM and start fulfilling our dependencies list.
+Initial dependencies that need to be installed:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sudo apt-get install pkg-config cmake libglib2.0-dev gtk-doc-tools autoconf \
+                    libtool libffi-dev libmount-dev libgcrypt20-dev libxml2-dev dbus \
+                    libdbus-1-dev libgcr-3-dev libcap-dev libpolkit-gobject-1-dev \
+                    libmozjs-52-dev gperf libudev-dev ninja-build libsystemd-dev \
+                    libpam0g-dev intltool libsoup2.4-dev libavahi-client-dev \
+                    libavahi-glib-dev libgudev-1.0-dev libfuse-dev libudisks2-dev \
+                    libimobiledevice-dev libgoa-1.0-dev libsecret-1-dev libbluray-dev \
+                    libusb-1.0-0-dev libsmbclient-dev libarchive-dev \
+                    libcdio-paranoia-dev libgdata-dev libgphoto2-dev libmtp-dev \
+                    libnfs-dev
+</code></pre></div></div>
+
+<p>After initial dependencies have been installed,  we observe gvfsd’s build system. Because it uses meson, we need to run a quick few steps to install meson on our system.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>cd ~/repos
+wget https://github.com/mesonbuild/meson/archive/master.zip
+unzip master.zip
+rm master.zip
+cd meson-master
+sudo python3 setup.py install
+</code></pre></div></div>
+
+<p>Next we have to satisfy the glib version mismatch.</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>cd ~/repos
+wget https://download.gnome.org/sources/glib/2.59/glib-2.59.0.tar.xz
+tar -xvf glib-2.59.0.tar.xz
+rm glib-2.59.0.tar.xz
+cd glib-2.59.0/
+./autogen.sh
+make
+sudo make install
+</code></pre></div></div>
+
+<p>After satisfying the glib mismatch, there polkit mismatch that needs to be satisfied. To do this, we first need to build elogind and install its headers.</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>wget https://github.com/elogind/elogind/archive/master.zip
+unzip master.zip
+rm master.zip
+cd elogind-master
+./configure
+make
+sudo make install
+</code></pre></div></div>
+
+<p>Then we can build polkit.</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>wget https://www.freedesktop.org/software/polkit/releases/polkit-0.115.tar.gz
+tar -xvf polkit-0.115.tar.gz
+rm polkit-0.115.tar.gz
+cd polkit-0.115
+./configure
+make
+sudo make install
+</code></pre></div></div>
+
+<p>That’s it, all the dependencies have been fulfilled. We can finally use meson to configure gvfsd. I added the prefix so that the install will be in a local directory for copying. Removing it will allow it to be installed to your system. Ninja is used for building gvfsd.</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>cd ~/repos
+wget https://github.com/GNOME/gvfs/archive/master.zip
+unzip master.zip
+rm master.zip
+mkdir -p gvfs-master/build
+cd gvfs-master/build
+meson --prefix=$(pwd)/install_dir ..
+ninja
+ninja install
+</code></pre></div></div>
+
+<p><a href="./">back</a></p>
+
+        </section>
+
+        <aside id="sidebar">
+          
+            <a href="" class="button">
+              <small>Download</small>
+              .zip file
+            </a>
+            <a href="" class="button">
+              <small>Download</small>
+              .tar.gz file
+            </a>
+          
+
+          
+
+          <p>This page was generated by <a href="https://pages.github.com">GitHub Pages</a>.</p>
+        </aside>
+      </div>
+    </div>
+
+    
+  </body>
+</html>

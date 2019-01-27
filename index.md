@@ -5,6 +5,8 @@ layout: default
 Text can be **bold**, _italic_, or ~~strikethrough~~.
 
 [Link to another page](./another-page.html).
+**and then another**
+[How to build gvfsd](./gvfsd-build-howto.html).
 
 There should be whitespace between paragraphs.
 

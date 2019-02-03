@@ -9,9 +9,11 @@ layout: default
 - glu-9.0.0
 
 ## Starting with llvm
+**With 6 gigs of ram or more**
 
+```
 mkdir build
 cmake -DCMAKE_INSTALL_PREFIX=$(pwd)/../../llvm_out_dynall -BUILD_SHARED_LIBS:TRUE ..
-
+```
 
 [back](./)

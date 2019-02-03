@@ -8,6 +8,8 @@ Text can be **bold**, _italic_, or ~~strikethrough~~.
 **and then another**
 [How to build gvfsd](./gvfsd-build-howto.html).
 
+[How to build mesa stuff for local GPU application debugging](./new-mesa-howto.html).
+
 There should be whitespace between paragraphs.
 
 There should be whitespace between paragraphs. We recommend including a README, or a file with information about your project.

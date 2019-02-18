@@ -75,4 +75,6 @@ set auto-load safe-path /
 
 Then adding to our qemu boot script -s and -S, we can boot it before the efi files have been loaded, then debug the efi bios!
 
+To debug, make sure that you use gdb-multiarch, then target remote :1234
+
 [back](./)

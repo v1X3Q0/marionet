@@ -46,7 +46,7 @@ Now that you have started the bios, it luckily will be running from within your 
 
 ```
 script edkrunout.txt
-$(runqarm)
+runqarm
 exit
 ```
 

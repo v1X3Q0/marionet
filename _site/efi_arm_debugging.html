@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link rel="stylesheet" href="/assets/css/style.css?v=" media="screen" type="text/css">
+    <link rel="stylesheet" href="/assets/css/print.css" media="print" type="text/css">
+
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+<!-- Begin Jekyll SEO tag v2.5.0 -->
+<title>Architect theme | Architect is a theme for GitHub Pages.</title>
+<meta name="generator" content="Jekyll v3.8.5" />
+<meta property="og:title" content="Architect theme" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Architect is a theme for GitHub Pages." />
+<meta property="og:description" content="Architect is a theme for GitHub Pages." />
+<link rel="canonical" href="http://localhost:4000/efi_arm_debugging.html" />
+<meta property="og:url" content="http://localhost:4000/efi_arm_debugging.html" />
+<meta property="og:site_name" content="Architect theme" />
+<script type="application/ld+json">
+{"@type":"WebPage","url":"http://localhost:4000/efi_arm_debugging.html","headline":"Architect theme","description":"Architect is a theme for GitHub Pages.","@context":"http://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+
+  </head>
+
+  <body>
+    <header>
+      <div class="inner">
+        <a href="http://localhost:4000/">
+          <h1>Architect theme</h1>
+        </a>
+        <h2>Architect is a theme for GitHub Pages.</h2>
+        
+        
+      </div>
+    </header>
+
+    <div id="content-wrapper">
+      <div class="inner clearfix">
+        <section id="main-content">
+          <h2 id="debugging-efi-bios-for-arm-targets">Debugging efi bios for arm targets</h2>
+<p>For efi bios on arm, I based my workflow on that as described by <a href="https://wiki.linaro.org/LEG/UEFIforQEMU">Linaro</a>, and the <a href="https://github.com/tianocore/edk2">edk2</a> efi firmware.</p>
+
+<p>First thing is getting a copy of edk2, and to be safe initiating all submodules in the repo. done by:</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git clone https://github.com/tianocore/edk2
+cd edk2
+git submodule update --init --recursive
+</code></pre></div></div>
+
+<p>After we have a pulled copy of edk2, the next step would be to build it from source with our arm gcc compilers specified. If you don’t have them, they can be retrieved using:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sudo apt-get install gcc-arm-linux-gnueabihf gcc-aarch64-linux-gnu
+</code></pre></div></div>
+
+<p>Next to proceed with bulding the Common Libraries for edk2:</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>make -C BaseTools
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>source edksetup.sh
+export GCC49_AARCH64_PREFIX=aarch64-linux-gnu-
+export GCC49_ARM_PREFIX=arm-linux-gnueabihf-
+build -a &lt;architecture&gt; -t GCC49 -p ArmVirtPkg/ArmVirtQemu.dsc
+</code></pre></div></div>
+<p>where <architecture> is either ARM or AARCH64. Next, if you want boot execute:</architecture></p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>alias runqarm='qemu-system-arm \
+    -m 1024 \
+    -cpu cortex-a12 \
+    -M virt \
+    -bios Build/ArmVirtQemu-&lt;arch&gt;/DEBUG_GCC49/FV/QEMU_EFI.fd \
+    -serial stdio \
+    -drive file=raw.img,format=raw'
+$(runqarm)
+</code></pre></div></div>
+
+<p>Now that you have started the bios, it luckily will be running from within your shell. This allows us to capture the output and perform something funny on it. For this we will execute the command script and then evaluate the outted file:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>script edkrunout.txt
+$(runqarm)
+exit
+</code></pre></div></div>
+
+<p>Waiting for a few seconds, we have edk2 to run through everything it has to do in initialization. The core part that matters most is that we can see a funny string that pops up from the output pretty often, a wonderful feature of edk2 that I believe is a small feature that gdb could use, the lack of efi executable recognition! Luckily, edk2 builds DLLs that satisfy symbols for us. We see the string appear in the debugging output specifying the loading address of the module, as well as the dll path. with a simple python script:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">sys</span>
+<span class="n">filename</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+<span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s">'r'</span><span class="p">)</span>
+<span class="n">g</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
+<span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span> <span class="o">+</span> <span class="s">'.asf'</span><span class="p">,</span> <span class="s">'w'</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">g</span><span class="p">:</span>
+    <span class="n">first_thing</span> <span class="o">=</span> <span class="n">i</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">" "</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">first_thing</span> <span class="o">==</span> <span class="s">'add-symbol-file'</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+<span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p>The resulting output file we can take, and throw all the output in it into a local .gdbinit while changing our $HOME .gdbinit to allow the symbol file loading:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>add-auto-load-safe-path /home/mariomain/repos/edk2/.gdbinit
+set auto-load safe-path /
+</code></pre></div></div>
+
+<p>Then adding to our qemu boot script -s and -S, we can boot it before the efi files have been loaded, then debug the efi bios!</p>
+
+<p><a href="./">back</a></p>
+
+        </section>
+
+        <aside id="sidebar">
+          
+            <a href="" class="button">
+              <small>Download</small>
+              .zip file
+            </a>
+            <a href="" class="button">
+              <small>Download</small>
+              .tar.gz file
+            </a>
+          
+
+          
+
+          <p>This page was generated by <a href="https://pages.github.com">GitHub Pages</a>.</p>
+        </aside>
+      </div>
+    </div>
+
+    
+  </body>
+</html>

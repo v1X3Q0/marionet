@@ -43,7 +43,7 @@
       <div class="inner clearfix">
         <section id="main-content">
           <h2 id="how-to-build-gvfsd-from-source">How to build gvfsd from source</h2>
-<p>Building gvfsd is a pain in the dairyaire. When building, a problem ensues from glib headers supported by apt not being up to the version required by gvfsd. Because of this, building may require a temp VM to be built. We begin by making a VMware Workstation ubuntu 18 VM and start fulfilling our dependencies list.
+<p>Building gvfsd is a pain in the dairyaire. When building, a problem ensues from glib headers supported by apt not being up to the version required by gvfsd. Because of this, building may require a temp VM. We begin by making a VMware Workstation ubuntu 18 VM and start fulfilling our dependencies list.
 Initial dependencies that need to be installed:</p>
 
 <div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sudo apt-get install pkg-config cmake libglib2.0-dev gtk-doc-tools autoconf \
@@ -58,7 +58,7 @@ Initial dependencies that need to be installed:</p>
                     libnfs-dev
 </code></pre></div></div>
 
-<p>After initial dependencies have been installed,  we observe gvfsd’s build system. Because it uses meson, we need to run a quick few steps to install meson on our system.</p>
+<p>After initial dependencies have been installed, we observe gvfsd’s build system. Because it uses meson, we need to run a quick few steps to install meson on our system.</p>
 
 <div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>cd ~/repos
 wget https://github.com/mesonbuild/meson/archive/master.zip

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link rel="stylesheet" href="/assets/css/style.css?v=" media="screen" type="text/css">
+    <link rel="stylesheet" href="/assets/css/print.css" media="print" type="text/css">
+
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+<!-- Begin Jekyll SEO tag v2.5.0 -->
+<title>MARIONET | Vulnerability Research tips and tricks</title>
+<meta name="generator" content="Jekyll v3.8.5" />
+<meta property="og:title" content="MARIONET" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Vulnerability Research tips and tricks" />
+<meta property="og:description" content="Vulnerability Research tips and tricks" />
+<link rel="canonical" href="http://localhost:4000/fsu-workshop-0309.html" />
+<meta property="og:url" content="http://localhost:4000/fsu-workshop-0309.html" />
+<meta property="og:site_name" content="MARIONET" />
+<script type="application/ld+json">
+{"@type":"WebPage","headline":"MARIONET","url":"http://localhost:4000/fsu-workshop-0309.html","description":"Vulnerability Research tips and tricks","@context":"http://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+
+  </head>
+
+  <body>
+    <header>
+      <div class="inner">
+        <a href="http://localhost:4000/">
+          <h1>MARIONET</h1>
+        </a>
+        <h2>Vulnerability Research tips and tricks</h2>
+        
+        
+      </div>
+    </header>
+
+    <div id="content-wrapper">
+      <div class="inner clearfix">
+        <section id="main-content">
+          <h2 id="florida-state-cyber-security-workshop-030919">Florida State Cyber Security Workshop 03/09/19</h2>
+
+<p>jsfunfuzzer
+Simple python
+Install for python3</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git clone https://github.com/MozillaSecurity/funfuzz.git
+cd funfuzz
+sudo python3 setup.py install
+</code></pre></div></div>
+<p>Since our crash is on firefox 44.0.2, we will try writing a fuzzer for that target, with hopes of reproducing it.
+First retrieve the source</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>wget https://ftp.mozilla.org/pub/firefox/releases/44.0.2/source/firefox-44.0.2.source.tar.xz
+tar -xvf firefox-44.0.2.source.tar.xz
+</code></pre></div></div>
+<p>We have to patch the configure file in the source
+First, you must attempt a configure in the js/src directory. This will modify the configure file to have a regular expression check moved to a different line than it was at previoudly, from 15834 to 15735. Once this move happens, you need to modify line 15735 to replace instances of [:space:] with [[:space:]]
+so that the line looks like:</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>    version=`sed -n 's/^[[:space:]]*#[[:space:]]*define[[:space:]][[:space:]]*U_ICU_VERSION_MAJOR_NUM[[:space:]][[:space:]]*\([0-9][0-9]*\)[[:space:]]*$/\1/p' "$icudir/common/unicode/uvernum.h"`
+</code></pre></div></div>
+<p>You also may be required to install autoconf-2.13
+with</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sudo apt-get install autoconf2.13
+</code></pre></div></div>
+<p>After, we begin the build process</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>cd firefox-44.0.2/js/src
+autoconf2.13
+mkdir build_DBG.OBJ
+cd build_DBG.OBJ
+../configure --enable-debug --enable-debug-symbols --disable-optimize --prefix=$(pwd)/gk_install
+make -j 2
+make install
+</code></pre></div></div>
+<p>With jsfunfuzz installed and the javascript engine built, it’s time to get the fuzzer running.
+A proper config needs to be set up for our fuzzer, create a file js.fuzzmanagerconf in the directory of the installed js engine</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>cd gk_install/bin
+</code></pre></div></div>
+<p>Add to the file:</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[Main]
+platform = x86_64
+product = mozilla-central
+os = linux
+[Metadata]
+pathPrefix = /location/of/firefox/download/firefox-44.0.2/js/src/build_DBG.OBJ/gk_install/bin
+buildFlags = --disable-optimize --enable-debug
+</code></pre></div></div>
+<p>We can now execute the fuzzer</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>python3 -m funfuzz.js.loop --random-flags --compare-jit 20 mozilla-central $(pwd)/js
+</code></pre></div></div>
+<p>Outputted javascript samples are inside of the instance folder
+First sample is located in /wtmp1
+Has the samples used for fuzzing
+Will have dumps in the file core.tgz
+Dump of js process to be reproduced</p>
+
+<p><a href="./">back</a></p>
+
+        </section>
+
+        <aside id="sidebar">
+          
+
+          
+
+          <p>This page was generated by <a href="https://pages.github.com">GitHub Pages</a>.</p>
+        </aside>
+      </div>
+    </div>
+
+    
+  </body>
+</html>

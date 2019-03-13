@@ -15,3 +15,5 @@ Noting that vulnerability research isn't an easy field to jump into, I decided t
 [Remote building and installing the linux kernel](./remote-build-lk.html)
 
 [Building Virtualbox for ub18 on ub18](./vbox-build-source.html)
+
+[FSU CS WS 30/09/2019](./fsu-workshop-0309.html)

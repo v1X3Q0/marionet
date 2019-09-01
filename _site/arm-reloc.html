@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link rel="stylesheet" href="/assets/css/style.css?v=" media="screen" type="text/css">
+    <link rel="stylesheet" href="/assets/css/print.css" media="print" type="text/css">
+
+    <!--[if lt IE 9]>
+    <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
+    <![endif]-->
+
+<!-- Begin Jekyll SEO tag v2.6.1 -->
+<title>MARIONET | Vulnerability Research tips and tricks</title>
+<meta name="generator" content="Jekyll v4.0.0" />
+<meta property="og:title" content="MARIONET" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Vulnerability Research tips and tricks" />
+<meta property="og:description" content="Vulnerability Research tips and tricks" />
+<meta property="og:site_name" content="MARIONET" />
+<script type="application/ld+json">
+{"@type":"WebPage","url":"/arm-reloc.html","headline":"MARIONET","description":"Vulnerability Research tips and tricks","@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+
+  </head>
+
+  <body>
+    <header>
+      <div class="inner">
+        <a href="/">
+          <h1>MARIONET</h1>
+        </a>
+        <h2>Vulnerability Research tips and tricks</h2>
+        
+        
+      </div>
+    </header>
+
+    <div id="content-wrapper">
+      <div class="inner clearfix">
+        <section id="main-content">
+          <p>The windows PE file format expands across most architecures, including x86,
+x86-64 and ARM. When calling CreateProcess on a compiled executable, the loading
+sequence opaquely takes a file on the filesystem and creates a process for it.
+It loads the process into memory, copying the correct sections to their
+requested virtual address in memory, relocating any addresses that need rebasing
+and importing any external calls that are referenced. Should a user have a
+binary that they would like to create a process for, without creating a pid for
+it, they have the ability to perform the above tasks themselves to load one
+process into another.</p>
+
+<p>Metasploit has a tool that already perform this technique, reflective injection,
+<a href="https://www.rapid7.com/db/modules/post/windows/manage/reflective_dll_inject">here</a>.</p>
+
+<p>This blogpost will be covering a few of the basics of this technique, and expand
+on how it can be used to reflectively inject an ARM PE EXE.</p>
+
+<p>The first thing to point out is that there are no evident differences between
+PEs across any and all architectures. The NT header, file header, sections and
+all necessary offsets are accessible from the Visual Studio ARM SDK. They can
+also be referenced by the tool CFF explorer the same way per architecture as
+well.</p>
+
+<p>The first noted difference is the architecture field of the file header.
+Although ARM binaries will be recognized by CFF explorer as Unknown, a value of
+0x1c4 can be seen in this field. Although not necessary to observe during
+runtime, it is a useful reference for binaries that can be compiled or ripped
+from targets such as windows phones.</p>
+
+<p><img src="../assets/images/armNtosFH.jpg" alt="armNtosFH" /></p>
+
+<p><img src="../assets/images/amd64NtosFH.jpg" alt="amd64NtosFH" /></p>
+
+<p>Moving on to some more major differences between architectures, the relocation
+table. I deconstruct the process of relocation in the Windows PE loader, but a
+good link for reference is <a href="http://research32.blogspot.com/2015/01/base-relocation-table.html?m=1">here</a>.</p>
+
+<p>The only thing that the post does not go into with depth is the most important
+difference, relocation types. Most windows PEs only use the relocation type
+IMAGE_REL_BASED_HIGHLOW. ARM adds an additional type that needs relocation of
+imports. The reason for this is the loss of variable length instructions. For
+calling imports, x86 has the ability to load a relative offset into a register
+in one instruction, then dereferencing it to be called, thereby a resolved
+import. ARM meanwhile has to load a four byte address, two bytes at a time using
+two four byte instructions.</p>
+
+<p>The four byte address loaded is the absolute address should the binary be loaded
+at 0x000400000. In the process of reflective injecting, this is fine should
+VirtualAlloc with that base and the correct virtual image size specified. Then
+you can ignore the relocation table as a whole and use that address for the base
+of your PE. But should a single page be mapped in that  range, the whole load
+will fail.</p>
+
+<p>So onto the juicy part, relocating these absolute address instructions. This can
+be done by decoding the load upper and load lower operations done on these PLT
+like routines. These decoded absolute addresses are then subtracted by the
+typical base offset and added to the new process base address. They can then be
+re-encoded into the load operations and written to memory. That’s it!</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">case</span> <span class="n">IMAGE_REL_BASED_MACHINE_SPECIFIC_7</span><span class="p">:</span>
+    <span class="n">oldAddress</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="n">dirtyInst</span> <span class="o">=</span> <span class="o">*</span><span class="p">(</span><span class="kt">size_t</span><span class="o">*</span><span class="p">)(</span><span class="n">relocVirtAddr</span><span class="p">);</span>
+    <span class="n">newAddress</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="n">oldAddress</span> <span class="o">=</span> <span class="n">oldAddress</span> <span class="o">|</span> <span class="p">((</span><span class="n">dirtyInst</span> <span class="o">&amp;</span> <span class="mh">0x0000000f</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="mi">12</span><span class="p">);</span>
+    <span class="n">oldAddress</span> <span class="o">=</span> <span class="n">oldAddress</span> <span class="o">|</span> <span class="p">((</span><span class="n">dirtyInst</span> <span class="o">&amp;</span> <span class="mh">0x00000400</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="mi">1</span><span class="p">);</span>
+    <span class="n">oldAddress</span> <span class="o">=</span> <span class="n">oldAddress</span> <span class="o">|</span> <span class="p">((</span><span class="n">dirtyInst</span> <span class="o">&amp;</span> <span class="mh">0x00ff0000</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="mi">16</span><span class="p">);</span>
+    <span class="n">oldAddress</span> <span class="o">=</span> <span class="n">oldAddress</span> <span class="o">|</span> <span class="p">((</span><span class="n">dirtyInst</span> <span class="o">&amp;</span> <span class="mh">0x70000000</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="mi">20</span><span class="p">);</span>
+    <span class="n">dirtyInst</span> <span class="o">=</span> <span class="o">*</span><span class="p">(</span><span class="kt">size_t</span><span class="o">*</span><span class="p">)(</span><span class="n">relocVirtAddr</span> <span class="o">+</span> <span class="mi">1</span><span class="p">);</span>
+    <span class="n">oldAddress</span> <span class="o">=</span> <span class="n">oldAddress</span> <span class="o">|</span> <span class="p">((</span><span class="n">dirtyInst</span> <span class="o">&amp;</span> <span class="mh">0x0000000f</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="mi">28</span><span class="p">);</span>
+    <span class="n">oldAddress</span> <span class="o">=</span> <span class="n">oldAddress</span> <span class="o">|</span> <span class="p">((</span><span class="n">dirtyInst</span> <span class="o">&amp;</span> <span class="mh">0x00000400</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="mi">17</span><span class="p">);</span>
+    <span class="n">oldAddress</span> <span class="o">=</span> <span class="n">oldAddress</span> <span class="o">|</span> <span class="p">((</span><span class="n">dirtyInst</span> <span class="o">&amp;</span> <span class="mh">0x00ff0000</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="mi">0</span><span class="p">);</span>
+    <span class="n">oldAddress</span> <span class="o">=</span> <span class="n">oldAddress</span> <span class="o">|</span> <span class="p">((</span><span class="n">dirtyInst</span> <span class="o">&amp;</span> <span class="mh">0x70000000</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="mi">4</span><span class="p">);</span>
+    <span class="n">newAddress</span> <span class="o">=</span> <span class="n">oldAddress</span> <span class="o">+</span> <span class="n">delta</span><span class="p">;</span>
+
+    <span class="n">dirtyInst</span> <span class="o">=</span> <span class="mh">0x0c00f240</span><span class="p">;</span>
+    <span class="n">dirtyInst</span> <span class="o">=</span> <span class="n">dirtyInst</span> <span class="o">|</span> <span class="p">((</span><span class="n">newAddress</span> <span class="o">&amp;</span> <span class="mh">0x0000f000</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="mi">12</span><span class="p">);</span>
+    <span class="n">dirtyInst</span> <span class="o">=</span> <span class="n">dirtyInst</span> <span class="o">|</span> <span class="p">((</span><span class="n">newAddress</span> <span class="o">&amp;</span> <span class="mh">0x000000ff</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="mi">16</span><span class="p">);</span>
+    <span class="n">dirtyInst</span> <span class="o">=</span> <span class="n">dirtyInst</span> <span class="o">|</span> <span class="p">((</span><span class="n">newAddress</span> <span class="o">&amp;</span> <span class="mh">0x00000700</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="mi">20</span><span class="p">);</span>
+    <span class="n">dirtyInst</span> <span class="o">=</span> <span class="n">dirtyInst</span> <span class="o">|</span> <span class="p">((</span><span class="n">newAddress</span> <span class="o">&amp;</span> <span class="mh">0x00000800</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="mi">1</span><span class="p">);</span>
+    <span class="o">*</span><span class="n">relocVirtAddr</span> <span class="o">=</span> <span class="n">dirtyInst</span><span class="p">;</span>
+    <span class="n">relocVirtAddr</span><span class="o">++</span><span class="p">;</span>
+    <span class="n">dirtyInst</span> <span class="o">=</span> <span class="mh">0x0c00f2c0</span><span class="p">;</span>
+    <span class="n">dirtyInst</span> <span class="o">=</span> <span class="n">dirtyInst</span> <span class="o">|</span> <span class="p">((</span><span class="n">newAddress</span> <span class="o">&amp;</span> <span class="mh">0xf0000000</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="mi">28</span><span class="p">);</span>
+    <span class="n">dirtyInst</span> <span class="o">=</span> <span class="n">dirtyInst</span> <span class="o">|</span> <span class="p">((</span><span class="n">newAddress</span> <span class="o">&amp;</span> <span class="mh">0x00ff0000</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="mi">0</span><span class="p">);</span>
+    <span class="n">dirtyInst</span> <span class="o">=</span> <span class="n">dirtyInst</span> <span class="o">|</span> <span class="p">((</span><span class="n">newAddress</span> <span class="o">&amp;</span> <span class="mh">0x07000000</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="mi">4</span><span class="p">);</span>
+    <span class="n">dirtyInst</span> <span class="o">=</span> <span class="n">dirtyInst</span> <span class="o">|</span> <span class="p">((</span><span class="n">newAddress</span> <span class="o">&amp;</span> <span class="mh">0x08000000</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="mi">17</span><span class="p">);</span>
+    <span class="o">*</span><span class="n">relocVirtAddr</span> <span class="o">=</span> <span class="n">dirtyInst</span><span class="p">;</span>
+
+    <span class="k">break</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>The final part is reflectuve injecting an EXE vs a DLL. DLLs, or shared
+libraries typically have a DllMain as a point of entry, although not required.
+Once called, this routine calls any required setup code and routines that the
+module requires to be run. The module then remains in memory for any exported
+functions in that module to be called.</p>
+
+<p>EXEs by contrast are required to have a point of entry, of which will be called
+on start. The entry point routine sets up any handles necessary for the main
+routine, such as retrieving the values to be used as argc and argv. This
+functionality is implicitly always performed in an executable, even if not
+specified for a main routine to have parameters as such for a compiler. The main
+routine is then called and returns. Finally, the enrypoint routine will call the
+imported function <em>exit</em>, which will signal the operating system to delete the
+process and clean up its address space.</p>
+
+<p>The underlying problem being that the operating system is now trying to kill the
+process that was used to run code, where maybe that was not the desired
+functionality. Under the circumstance that the desired executable to be run
+must be an EXE, the import for <em>exit</em> should ideally point somewhere else.</p>
+
+<p>For this to be performed, we can iterate imports for our target PE and choose to
+write to the address for <em>exit</em>’s import a routine that will correctly clean the
+stack and registers, while returning to the expected runtime and possibly
+killing the thread.</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">IMAGE_IMPORT_BY_NAME</span> <span class="o">*</span><span class="n">import_name</span> <span class="o">=</span>
+    <span class="p">(</span><span class="n">IMAGE_IMPORT_BY_NAME</span><span class="o">*</span><span class="p">)(</span><span class="n">ogT</span><span class="o">-&gt;</span><span class="n">u1</span><span class="p">.</span><span class="n">AddressOfData</span> <span class="o">+</span> <span class="p">(</span><span class="kt">size_t</span><span class="p">)</span><span class="n">allocBase</span><span class="p">);</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">strcmp</span><span class="p">(</span><span class="n">import_name</span><span class="o">-&gt;</span><span class="n">Name</span><span class="p">,</span> <span class="s">"__p___argc"</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">temp_procedure</span> <span class="o">=</span> <span class="p">(</span><span class="n">FARPROC</span><span class="p">)</span><span class="n">pargc</span><span class="p">;</span>
+<span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">strcmp</span><span class="p">(</span><span class="n">import_name</span><span class="o">-&gt;</span><span class="n">Name</span><span class="p">,</span> <span class="s">"__p___argv"</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">temp_procedure</span> <span class="o">=</span> <span class="p">(</span><span class="n">FARPROC</span><span class="p">)</span><span class="n">pargv</span><span class="p">;</span>
+<span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">strcmp</span><span class="p">(</span><span class="n">import_name</span><span class="o">-&gt;</span><span class="n">Name</span><span class="p">,</span> <span class="s">"exit"</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">temp_procedure</span> <span class="o">=</span> <span class="p">(</span><span class="n">FARPROC</span><span class="p">)</span><span class="n">cust_exit</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>A quick note, the routines <em><strong>p</strong>_argc</em> and <em><strong>p</strong>_argv</em> are used to retrieve
+the parameters for the main argc and argv. Overwriting the values where the
+current routines argc and argv are located proved difficult, however replacing
+the functions that are used to get those parameters seemed to be the simplest
+way to go, to return wanted parameters.</p>
+
+<p>A routine that should be inplace of the <em>exit</em> method would have to be able to
+find where the stack pointer was, and know how to restore it when resuming
+execution. For this, a few globals will be allocated which will hold the stack
+pointer before execution, to properly 0restore it. This functionality should look
+like:</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">void</span> <span class="nf">cust_exit</span><span class="p">()</span>
+<span class="p">{</span>
+	<span class="kt">size_t</span><span class="o">*</span> <span class="n">startStk</span> <span class="o">=</span> <span class="p">(</span><span class="kt">size_t</span><span class="o">*</span><span class="p">)</span><span class="o">*</span><span class="n">stackPtr</span><span class="p">;</span>
+<span class="cp">#ifdef _X86_
+</span>	<span class="n">startStk</span> <span class="o">=</span> <span class="p">(</span><span class="kt">size_t</span><span class="o">*</span><span class="p">)</span><span class="o">*</span><span class="n">stackPtr</span> <span class="o">-</span> <span class="mi">2</span><span class="p">;</span>
+<span class="cp">#endif
+</span>	<span class="kt">size_t</span> <span class="n">retAddress</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+	<span class="kt">size_t</span> <span class="n">stackTar</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+	<span class="kt">void</span><span class="o">*</span> <span class="n">frameTar</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+	<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mh">0x100</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+		<span class="k">if</span> <span class="p">((</span><span class="o">*</span><span class="p">(</span><span class="n">startStk</span> <span class="o">-</span> <span class="n">i</span><span class="p">)</span> <span class="o">&gt;</span> <span class="p">(</span><span class="kt">size_t</span><span class="p">)</span><span class="o">*</span><span class="n">pcPtr</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">startStk</span> <span class="o">-</span> <span class="n">i</span><span class="p">)</span> <span class="o">&lt;</span> <span class="p">((</span><span class="kt">size_t</span><span class="p">)</span><span class="o">*</span><span class="n">pcPtr</span><span class="p">)</span> <span class="o">+</span> <span class="mh">0x40</span><span class="p">))</span>
+		<span class="p">{</span>
+			<span class="n">retAddress</span> <span class="o">=</span> <span class="o">*</span><span class="p">(</span><span class="n">startStk</span> <span class="o">-</span> <span class="n">i</span><span class="p">);</span>
+			<span class="n">stackTar</span> <span class="o">=</span> <span class="p">(</span><span class="kt">size_t</span><span class="p">)(</span><span class="n">startStk</span> <span class="o">-</span> <span class="n">i</span><span class="p">);</span>
+			<span class="k">break</span><span class="p">;</span>
+		<span class="p">}</span>
+	<span class="k">if</span> <span class="p">(</span><span class="n">retAddress</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span>
+	<span class="p">{</span>
+		<span class="n">frameTar</span> <span class="o">=</span> <span class="p">(</span><span class="kt">void</span><span class="o">*</span><span class="p">)</span><span class="o">*</span><span class="n">stackPtr</span><span class="p">;</span>
+		<span class="kt">void</span><span class="p">(</span><span class="o">*</span><span class="n">retAddress_f</span><span class="p">)(</span><span class="kt">void</span><span class="o">*</span><span class="p">,</span> <span class="kt">void</span><span class="o">*</span><span class="p">)</span> <span class="o">=</span> <span class="n">reinterpret_cast</span><span class="o">&lt;</span><span class="kt">void</span><span class="p">(</span><span class="o">*</span><span class="p">)(</span><span class="kt">void</span><span class="o">*</span><span class="p">,</span> <span class="kt">void</span><span class="o">*</span><span class="p">)</span><span class="o">&gt;</span><span class="p">((</span><span class="kt">void</span><span class="o">*</span><span class="p">)</span><span class="n">retAddress</span><span class="p">);</span>
+		<span class="n">retAddress_f</span><span class="p">(</span><span class="n">startStk</span><span class="p">,</span> <span class="n">frameTar</span><span class="p">);</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>To save a copy of the</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code>	<span class="n">argcN</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">argcM</span><span class="p">;</span>
+	<span class="n">argvN</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">argvM</span><span class="p">;</span>
+	<span class="n">stackPtr</span> <span class="o">=</span> <span class="p">(</span><span class="kt">void</span><span class="o">**</span><span class="p">)</span><span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">void</span><span class="o">*</span><span class="p">));</span>
+	<span class="n">pcPtr</span> <span class="o">=</span> <span class="p">(</span><span class="kt">void</span><span class="o">**</span><span class="p">)</span><span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">void</span><span class="o">*</span><span class="p">));</span>
+	<span class="kt">char</span><span class="o">*</span> <span class="n">FSV</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span><span class="o">*</span><span class="p">)</span><span class="n">VirtualAlloc</span><span class="p">(</span><span class="nb">NULL</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">fullSetVar</span><span class="p">),</span> <span class="n">MEM_RESERVE</span> <span class="o">|</span> <span class="n">MEM_COMMIT</span><span class="p">,</span> <span class="n">PAGE_EXECUTE_READWRITE</span><span class="p">);</span>
+	<span class="n">RtlCopyMemory</span><span class="p">(</span><span class="n">FSV</span><span class="p">,</span> <span class="n">fullSetVar</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">fullSetVar</span><span class="p">));</span>
+<span class="cp">#ifdef _ARM_
+</span>	<span class="n">FSV</span><span class="o">++</span><span class="p">;</span>
+<span class="cp">#endif
+</span>	<span class="kt">void</span><span class="p">(</span><span class="o">*</span><span class="n">fullSetVar_f</span><span class="p">)(</span><span class="kt">void</span><span class="o">**</span><span class="p">,</span> <span class="kt">void</span><span class="o">**</span><span class="p">,</span> <span class="kt">void</span><span class="o">*</span><span class="p">)</span> <span class="o">=</span> <span class="n">reinterpret_cast</span><span class="o">&lt;</span><span class="kt">void</span><span class="p">(</span><span class="o">*</span><span class="p">)(</span><span class="kt">void</span><span class="o">**</span><span class="p">,</span> <span class="kt">void</span><span class="o">**</span><span class="p">,</span> <span class="kt">void</span><span class="o">*</span><span class="p">)</span><span class="o">&gt;</span><span class="p">((</span><span class="kt">void</span><span class="o">*</span><span class="p">)</span><span class="n">FSV</span><span class="p">);</span>
+	<span class="n">fullSetVar_f</span><span class="p">(</span><span class="n">stackPtr</span><span class="p">,</span> <span class="n">pcPtr</span><span class="p">,</span> <span class="p">(</span><span class="kt">void</span><span class="o">*</span><span class="p">)</span><span class="n">MAIN</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p>This will require us to have a reference for where the stack needs to cleanup
+and return. We can achieve this by creating a shellcode wrapper for the target
+entry routine that will save the necessary registers to a global variable for
+use in our respective <em>exit</em> function.</p>
+
+<p><a href="./">back</a></p>
+
+        </section>
+
+        <aside id="sidebar">
+          
+
+          
+
+          <p>This page was generated by <a href="https://pages.github.com">GitHub Pages</a>.</p>
+        </aside>
+      </div>
+    </div>
+
+    
+  </body>
+</html>

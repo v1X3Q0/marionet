@@ -1,0 +1,17 @@
+I"Ù<h2 id="versions">Versions:</h2>
+<ul>
+  <li>llvm-7.0.0</li>
+  <li>mesa-18.2.4</li>
+  <li>glew-2.1.0</li>
+  <li>glu-9.0.0</li>
+</ul>
+
+<h2 id="starting-with-llvm">Starting with llvm</h2>
+<p><strong>With 6 gigs of ram or more</strong></p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mkdir build
+cmake -DCMAKE_INSTALL_PREFIX=$(pwd)/../../llvm_out_dynall -BUILD_SHARED_LIBS:TRUE ..
+</code></pre></div></div>
+
+<p><a href="./">back</a></p>
+:ET

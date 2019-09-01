@@ -12,14 +12,18 @@ git clone https://github.com/MozillaSecurity/funfuzz.git
 cd funfuzz
 sudo python3 setup.py install
 ```
-Since our crash is on firefox 44.0.2, we will try writing a fuzzer for that target, with hopes of reproducing it.
+Since our crash is on firefox 44.0.2, we will try writing a fuzzer for that
+target, with hopes of reproducing it.
 First retrieve the source
 ```
 wget https://ftp.mozilla.org/pub/firefox/releases/44.0.2/source/firefox-44.0.2.source.tar.xz
 tar -xvf firefox-44.0.2.source.tar.xz
 ```
 We have to patch the configure file in the source
-First, you must attempt a configure in the js/src directory. This will modify the configure file to have a regular expression check moved to a different line than it was at previoudly, from 15834 to 15735. Once this move happens, you need to modify line 15735 to replace instances of [:space:] with [[:space:]]
+First, you must attempt a configure in the js/src directory. This will modify
+the configure file to have a regular expression check moved to a different line
+than it was at previoudly, from 15834 to 15735. Once this move happens, you need
+to modify line 15735 to replace instances of [:space:] with [[:space:]]
 so that the line looks like:
 ```
     version=`sed -n 's/^[[:space:]]*#[[:space:]]*define[[:space:]][[:space:]]*U_ICU_VERSION_MAJOR_NUM[[:space:]][[:space:]]*\([0-9][0-9]*\)[[:space:]]*$/\1/p' "$icudir/common/unicode/uvernum.h"`

@@ -37,7 +37,8 @@ modify the file Config.kmk, changing the line:
 VBOX_JAVAC_OPTS   = -encoding UTF-8 -source 1.5 -target 1.5 -Xlint:unchecked
 ```
 
-so that both the target and the source are version 1.6. Afterwards configuring and setting the build environment. Following we build for debug targets:
+so that both the target and the source are version 1.6. Afterwards configuring
+and setting the build environment. Following we build for debug targets:
 
 ```
 ./configure --disable-hardening

@@ -1,4 +1,4 @@
-I"»]<p>The windows PE file format expands across most architecures, including x86,
+I"u^<p>The windows PE file format expands across most architecures, including x86,
 x86-64 and ARM. When calling CreateProcess on a compiled executable, the loading
 sequence opaquely takes a file on the filesystem and creates a process for it.
 It loads the process into memory, copying the correct sections to their
@@ -160,7 +160,10 @@ like:</p>
 <span class="p">}</span>
 </code></pre></div></div>
 
-<p>To save a copy of the</p>
+<p>Note that the value of <em>startStk</em> would be a saved stack offset to be used as a
+reference to search for a valid return address. <em>pcPtr</em> is a valid program
+counter address 
+To save a copy of the</p>
 
 <div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code>	<span class="n">argcN</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">argcM</span><span class="p">;</span>
 	<span class="n">argvN</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">argvM</span><span class="p">;</span>

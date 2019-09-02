@@ -1,10 +1,11 @@
-I"<h1 id="the-little-things-that-help">the little things that help!</h1>
+I"�<h1 id="vulnerability-research-is-fun">Vulnerability Research is fun!</h1>
 
 <p>Noting that vulnerability research isn’t an easy field to jump into, I decided
 to make a gitpage with my exploits out of the office. Tasks I’ll be covering for
 the most part are things that took way to much time to do, and had I had a
-simple blog post with instructions I would have saved a bunch of time. Should
-anyone have questions, I take emails at v1X3Q0@gmail.com</p>
+simple blog post with instructions I would have saved a bunch of time. I decided
+to also upload some documentation of a few tools. Should anyone have questions,
+I take emails at v1X3Q0@gmail.com</p>
 
 <p><a href="./gvfsd-build-howto.html">How to build gvfsd</a></p>
 
@@ -18,5 +19,7 @@ anyone have questions, I take emails at v1X3Q0@gmail.com</p>
 
 <p><a href="./fsu-workshop-0309.html">FSU CS WS 30/09/2019</a></p>
 
-<p><a href="./arm-reloc.html">ARM windows PE relocation tables</a></p>
+<p><a href="./arm-reloc.html">ARM windows PE reflective injection</a></p>
+
+<p><a href="./elf-reflect.html">ELF reflective injection</a></p>
 :ET

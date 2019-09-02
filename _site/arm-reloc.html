@@ -12,15 +12,15 @@
     <![endif]-->
 
 <!-- Begin Jekyll SEO tag v2.6.1 -->
-<title>MARIONET | Vulnerability Research tips and tricks</title>
+<title>MARIONET | Vulnerability Research</title>
 <meta name="generator" content="Jekyll v4.0.0" />
 <meta property="og:title" content="MARIONET" />
 <meta property="og:locale" content="en_US" />
-<meta name="description" content="Vulnerability Research tips and tricks" />
-<meta property="og:description" content="Vulnerability Research tips and tricks" />
+<meta name="description" content="Vulnerability Research" />
+<meta property="og:description" content="Vulnerability Research" />
 <meta property="og:site_name" content="MARIONET" />
 <script type="application/ld+json">
-{"@type":"WebPage","url":"/arm-reloc.html","headline":"MARIONET","description":"Vulnerability Research tips and tricks","@context":"https://schema.org"}</script>
+{"@type":"WebPage","url":"/arm-reloc.html","headline":"MARIONET","description":"Vulnerability Research","@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 
   </head>
@@ -31,7 +31,7 @@
         <a href="/">
           <h1>MARIONET</h1>
         </a>
-        <h2>Vulnerability Research tips and tricks</h2>
+        <h2>Vulnerability Research</h2>
         
         
       </div>
@@ -202,7 +202,10 @@ like:</p>
 <span class="p">}</span>
 </code></pre></div></div>
 
-<p>To save a copy of the</p>
+<p>Note that the value of <em>startStk</em> would be a saved stack offset to be used as a
+reference to search for a valid return address. <em>pcPtr</em> is a valid program
+counter address 
+To save a copy of the</p>
 
 <div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code>	<span class="n">argcN</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">argcM</span><span class="p">;</span>
 	<span class="n">argvN</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">argvM</span><span class="p">;</span>

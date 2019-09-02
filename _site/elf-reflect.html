@@ -20,7 +20,7 @@
 <meta property="og:description" content="Vulnerability Research" />
 <meta property="og:site_name" content="MARIONET" />
 <script type="application/ld+json">
-{"@type":"WebPage","url":"/another-page.html","headline":"MARIONET","description":"Vulnerability Research","@context":"https://schema.org"}</script>
+{"@type":"WebPage","url":"/elf-reflect.html","headline":"MARIONET","description":"Vulnerability Research","@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 
   </head>
@@ -40,9 +40,16 @@
     <div id="content-wrapper">
       <div class="inner clearfix">
         <section id="main-content">
-          <h2 id="welcome-to-another-page">Welcome to another page</h2>
+          <h2 id="reflect-loading-elf-binaries">Reflect loading ELF binaries</h2>
 
-<p><em>yay</em></p>
+<p>ELF shared object files behave very similarly to Windows PE DLLs. One of the
+most similar features is the provided API ability to load a library, dlload and
+LoadLibrary. A key weakness of dlload is ita lack of the ability to load a
+compiled elf executable, to say load or even reflectively inject an executable.
+This post will go over implementing a dlload for executable elf files, in
+addition to a custom dlsym to aid in retrieving dlload.</p>
+
+<p>The first step in this proce</p>
 
 <p><a href="./">back</a></p>
 

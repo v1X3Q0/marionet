@@ -168,6 +168,9 @@ void cust_exit()
 }
 ```
 
+Note that the value of _startStk_ would be a saved stack offset to be used as a
+reference to search for a valid return address. _pcPtr_ is a valid program
+counter address 
 To save a copy of the 
 
 ```c

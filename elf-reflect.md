@@ -39,6 +39,72 @@ ELF header (Ehdr)
         } ElfN_Ehdr;
 ```
 
-As can the section header. The section header will be used for
+That program header can be used for segments of the binary. These contain values
+such as that for the load offset of the binary, as well as the dynamic segment.
+
+```c
+for (i = 0; i < elfHead->e_phnum; i++)
+{
+    switch (phdr[i].p_type)
+    {
+        case PT_DYNAMIC:
+            dynTab = (struct Elf64Dyn_t*)(phdr[i].p_offset + fileRaw);
+            break;
+        case PT_LOAD:
+            if (loadOff == 0xffffffffffffffff)
+                loadOff = phdr[i].p_vaddr;
+            else if (loadOff > phdr->p_vaddr)
+                loadOff = phdr[i].p_vaddr;
+            break;
+    }
+}
+```
+
+The program header also will have implicitly, the size of the resolved image in
+memory. While Windows PEs have this value explicitly saved in its header, ELF
+files require a loader to deduce this vaalue by taking the last segment in
+memory and adding its loaded virtual address to its size, resulting in the
+virtual memory required.
+
+```c
+int getVirtSize(struct Elf64Phdr_t* phdr, int phdrNum)
+{
+	int i;
+	int virtSz = 0;
+	int newVirt = 0;
+	for (i = 0; i < phdrNum; i++)
+	{
+		newVirt = phdr[i].p_vaddr + phdr[i].p_memsz;
+		if (virtSz < newVirt)
+			virtSz = newVirt;
+	}
+	return virtSz;
+}
+```
+
+The retrieved dynTab pointer to the dynamic section will be used to locate the
+various tables, such as that for the strings, symbols, and the process's GOT.
+Following that step will be loading the dependencies and imports required for
+the binary. I could not find a method that did this any cleaner than the one
+used here. Re-iterating the dynamic table allows us to load any libraries
+that have string table offsets. These entries in the dynamic table have a type
+of DT_NEEDED and tend to begin that table.
+
+```c
+int i = 0;
+struct Elf64Dyn_t* dynEnt;
+for (dynEnt = dynTab; dynEnt->dynType != DT_NULL; dynEnt++)
+{
+    switch (dynEnt->dynType)
+    {
+        case DT_NEEDED:
+            depTab[i] = dlopen(dynEnt->d_val + strTab, RTLD_NOW);
+    }
+    i++;
+}
+```
+
+Now that all the required libraries are loaded into memory, we have to resolve
+all the function imports. 
 
 [back](./)

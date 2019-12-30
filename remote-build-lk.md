@@ -51,6 +51,18 @@ Now setting the install directory to a location that we can easily copy all the 
 make INSTALL_MOD_DIR=$(pwd)/../l15inst \
 INSTALL_MOD_PATH=$(pwd)/../l15inst modules_install
 ```
-
+Now that the kernel has been built, we can copy it over to install.
+```
+tar -cvf l15inst.tar ../l15inst vmlinux System.map arch/x86/boot/bzImage
+scp l15inst.tar mariomain@remote.host:
+```
+Proceed with the install!
+```
+tar -xvf l15inst.tar
+cp -r l15inst/* /
+sudo installkernel 4.15.0 bzImage System.map
+sudo installkernel 4.15.0 vmlinux System.map
+rm -rf l15inst
+```
 
 [back](./)
